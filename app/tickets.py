@@ -57,6 +57,7 @@ def generar_ticket_pdf(
     origen="No registrado",
     recibido=None,
     cambio=None,
+    mesa=None,
 ):
     """
     Guarda una copia PDF del ticket.
@@ -106,6 +107,11 @@ def generar_ticket_pdf(
     c.drawString(6 * mm, y, f"Ticket #{venta_id}")
     c.drawRightString(ancho - 6 * mm, y, datetime.now().strftime("%d/%m/%Y %H:%M"))
     y -= 5 * mm
+
+    if mesa:
+        c.setFont("Helvetica-Bold", 8)
+        c.drawString(6 * mm, y, str(mesa)[:36])
+        y -= 5 * mm
 
     c.line(5 * mm, y, ancho - 5 * mm, y)
     y -= 5 * mm
@@ -174,6 +180,7 @@ def generar_ticket_pdf(
         "origen": str(origen),
         "recibido": None if recibido is None else float(recibido),
         "cambio": None if cambio is None else float(cambio),
+        "mesa": None if mesa is None else str(mesa),
     }
 
     ruta_datos = TICKETS_FOLDER / f"ticket_{venta_id}.json"
