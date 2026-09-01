@@ -160,6 +160,79 @@ class OrderWorkflowTests(TemporaryDatabaseTest):
         self.assertIn("Cuenta 2", etiquetas[2])
         self.assertIn("Compartido", etiquetas[3])
 
+    def test_paying_one_diner_keeps_the_other_diner_and_table_open(self):
+        pedido_id, _total = database.crear_pedido_movil(
+            "Mesa 7", "Ana", [
+                {"producto_id": 1, "cantidad": 1, "cuenta_numero": 1},
+                {"producto_id": 2, "cantidad": 1, "cuenta_numero": 2},
+            ]
+        )
+        cuentas = database.obtener_comensales_mesa("Mesa 7")
+        self.assertEqual([c["total"] for c in cuentas], [150.0, 135.0])
+
+        venta_id = database.guardar_venta(cuentas[0]["productos"], 150.0)
+        database.registrar_pago_comensal(
+            "Mesa 7", 1, venta_id, cuentas[0]["pedido_ids"]
+        )
+
+        cuentas = database.obtener_comensales_mesa("Mesa 7")
+        self.assertEqual(cuentas[0]["estado"], "PAGADO")
+        self.assertEqual(cuentas[0]["total"], 0)
+        self.assertEqual(cuentas[1]["estado"], "ABIERTO")
+        self.assertEqual(cuentas[1]["total"], 135.0)
+        mesa = next(
+            m for m in database.obtener_resumen_mesas()
+            if m["mesa"] == "Mesa 7"
+        )
+        self.assertTrue(mesa["ocupada"])
+        self.assertEqual(mesa["total"], 135.0)
+        self.assertEqual(
+            database.obtener_estado_pedido_movil(pedido_id)[4], "Parcial"
+        )
+
+        cuenta_dos = next(
+            c for c in database.obtener_comensales_mesa("Mesa 7")
+            if c["numero"] == 2
+        )
+        venta_dos = database.guardar_venta(
+            cuenta_dos["productos"], cuenta_dos["total"]
+        )
+        database.registrar_pago_comensal(
+            "Mesa 7", 2, venta_dos, cuenta_dos["pedido_ids"]
+        )
+        self.assertEqual(
+            database.obtener_estado_pedido_movil(pedido_id)[4], "Cobrado"
+        )
+        mesa = next(
+            m for m in database.obtener_resumen_mesas()
+            if m["mesa"] == "Mesa 7"
+        )
+        self.assertFalse(mesa["ocupada"])
+        self.assertEqual(mesa["total"], 0)
+
+    def test_new_items_for_paid_diner_reopen_only_new_order(self):
+        pedido_id, _ = database.crear_pedido_movil(
+            "Mesa 8", "Ana", [
+                {"producto_id": 1, "cantidad": 1, "cuenta_numero": 1},
+                {"producto_id": 2, "cantidad": 1, "cuenta_numero": 2},
+            ]
+        )
+        cuenta = database.obtener_comensales_mesa("Mesa 8")[0]
+        venta_id = database.guardar_venta(cuenta["productos"], cuenta["total"])
+        database.registrar_pago_comensal(
+            "Mesa 8", 1, venta_id, cuenta["pedido_ids"]
+        )
+        nuevo_id, _ = database.crear_pedido_desde_pc(
+            "Mesa 8", "Caja", [("Café", 60.0)],
+            comensal_numero=1,
+        )
+        abiertas = {
+            c["numero"]: c for c in database.obtener_comensales_mesa("Mesa 8")
+        }
+        self.assertEqual(abiertas[1]["productos"], [("Café", 60.0)])
+        self.assertEqual(abiertas[1]["pedido_ids"], [nuevo_id])
+        self.assertEqual(abiertas[2]["total"], 135.0)
+
     def test_kitchen_can_deliver_one_unit_at_a_time(self):
         pedido_id, _total = database.crear_pedido_movil(
             "Mesa 2", "Ana", [{"producto_id": 1, "cantidad": 2}]
