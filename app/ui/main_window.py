@@ -76,6 +76,8 @@ from app.database.database import (
     contar_pedidos_pendientes,
     obtener_detalle_pedido_movil,
     obtener_cuentas_pedidos,
+    obtener_comensales_mesa,
+    registrar_pago_comensal,
     obtener_estado_pedido_movil,
     actualizar_estado_pedido_movil,
     obtener_resumen_mesas,
@@ -2924,6 +2926,13 @@ class MesasDialog(PantallaDialog):
                 self.detalle.setItem(numero, columna, QTableWidgetItem(texto))
         if pedidos:
             extra = f"   ·   Notas: {' | '.join(notas)}" if notas else ""
+            comensales = obtener_comensales_mesa(mesa)
+            detalle_comensales = " · ".join(
+                f"C{c['numero']} {c['estado']} ${c['total']:.2f}"
+                for c in comensales
+            )
+            if detalle_comensales:
+                extra += f"   ·   {detalle_comensales}"
             self.resumen.setText(
                 f"{mesa}: {len(pedidos)} pedido(s) · Total ${total:.2f}{extra}"
             )
@@ -3168,7 +3177,15 @@ class CuentasActivasDialog(PantallaDialog):
             for columna, valor in enumerate(valores):
                 texto = f"${valor:.2f}" if columna in (3, 4) else str(valor)
                 self.detalle.setItem(numero, columna, QTableWidgetItem(texto))
-        self.notas.setText("Notas: " + (" | ".join(notas) if notas else "Sin notas"))
+        comensales = obtener_comensales_mesa(mesa)
+        resumen = " · ".join(
+            f"C{c['numero']} {c['estado']} ${c['total']:.2f}"
+            for c in comensales
+        )
+        self.notas.setText(
+            ("Comensales: " + resumen + "\n" if resumen else "")
+            + "Notas: " + (" | ".join(notas) if notas else "Sin notas")
+        )
 
     def cargar(self):
         mesa = self.mesa_seleccionada()
@@ -3638,6 +3655,7 @@ class MainWindow(QMainWindow):
         self.cuentas_divididas_pendientes = []
         self.numero_cuenta_division_actual = 0
         self.total_cuentas_division = 0
+        self.comensal_cuenta_actual = None
         self.servidor_movil_url = None
         self.servidor_movil_error = None
         self.filtro_categoria = "Todos"
@@ -4458,6 +4476,18 @@ class MainWindow(QMainWindow):
             self.aviso_cuenta_activa.show()
             self.boton_enviar_mesa.setText("CUENTA DIVIDIDA - NO ENVIAR A COCINA")
             return
+        if self.comensal_cuenta_actual and self.mesa_cuenta_actual:
+            nuevos = max(0, len(self.carrito) - len(self.carrito_cuenta_original))
+            self.aviso_cuenta_activa.setText(
+                f"{self.mesa_cuenta_actual}  ·  COMENSAL {self.comensal_cuenta_actual}\n"
+                f"Cuenta individual seleccionada · {nuevos} producto(s) nuevo(s). "
+                "Solo esta cuenta se cobrará."
+            )
+            self.aviso_cuenta_activa.show()
+            self.boton_enviar_mesa.setText(
+                f"AGREGAR A COMENSAL {self.comensal_cuenta_actual}"
+            )
+            return
         if self.mesa_cuenta_actual and self.pedidos_movil_actuales:
             nuevos = max(0, len(self.carrito) - len(self.carrito_cuenta_original))
             self.aviso_cuenta_activa.setText(
@@ -4593,6 +4623,7 @@ class MainWindow(QMainWindow):
         self.cuentas_divididas_pendientes = []
         self.numero_cuenta_division_actual = 0
         self.total_cuentas_division = 0
+        self.comensal_cuenta_actual = None
         self.carrito.clear()
         self.notas_rapidas.clear()
         self.total = 0.0
@@ -4747,6 +4778,36 @@ class MainWindow(QMainWindow):
         total_venta = self.total
         productos_ticket = list(self.carrito)
 
+        # Si caja agregó algo al comensal seleccionado y cobra de inmediato,
+        # se crea primero su comanda. Así el producto llega a cocina y también
+        # queda ligado a la cuenta individual que se está pagando.
+        if (self.comensal_cuenta_actual and self.mesa_cuenta_actual
+                and self.pedidos_movil_actuales):
+            originales = list(self.carrito_cuenta_original)
+            nuevos = []
+            for producto in self.carrito:
+                if producto in originales:
+                    originales.remove(producto)
+                else:
+                    nuevos.append(producto)
+            if nuevos:
+                pedido_nuevo, total_nuevo = crear_pedido_desde_pc(
+                    self.mesa_cuenta_actual,
+                    self.empleado_actual["nombre"],
+                    nuevos,
+                    "\n".join(self.notas_rapidas),
+                    self.empleado_actual["id"],
+                    self.comensal_cuenta_actual,
+                )
+                actualizar_estado_pedido_movil(pedido_nuevo, "En caja")
+                self.pedidos_movil_actuales.append(pedido_nuevo)
+                registrar_auditoria(
+                    self.empleado_actual, "Enviar y cobrar", "Pedido",
+                    pedido_nuevo,
+                    f"{self.mesa_cuenta_actual} · Comensal "
+                    f"{self.comensal_cuenta_actual} · ${total_nuevo:.2f}",
+                )
+
         venta_id = guardar_venta(
             self.carrito,
             total_venta,
@@ -4771,7 +4832,14 @@ class MainWindow(QMainWindow):
                 self.carrito_restante_division,
             )
 
-        if self.pedidos_movil_actuales:
+        if (self.pedidos_movil_actuales and self.mesa_cuenta_actual
+                and self.comensal_cuenta_actual):
+            registrar_pago_comensal(
+                self.mesa_cuenta_actual, self.comensal_cuenta_actual,
+                venta_id, self.pedidos_movil_actuales,
+            )
+            self.pedidos_movil_actuales = []
+        elif self.pedidos_movil_actuales:
             for pedido_id in self.pedidos_movil_actuales:
                 actualizar_estado_pedido_movil(
                     pedido_id, "Cobrado", venta_id
@@ -4789,6 +4857,11 @@ class MainWindow(QMainWindow):
                 origen=origen,
                 recibido=recibido,
                 cambio=cambio,
+                mesa=(
+                    f"{self.mesa_cuenta_actual} · Comensal "
+                    f"{self.comensal_cuenta_actual}"
+                    if self.comensal_cuenta_actual else self.mesa_cuenta_actual
+                ),
             )
         except Exception as error:
             ruta_ticket = None
@@ -5012,6 +5085,7 @@ class MainWindow(QMainWindow):
             pedido_id, total = crear_pedido_desde_pc(
                 mesa, mesero.strip(), productos_a_enviar, notas.strip(),
                 self.empleado_actual["id"],
+                self.comensal_cuenta_actual or 1,
             )
             registrar_auditoria(
                 self.empleado_actual, "Enviar", "Pedido", pedido_id,
@@ -5025,9 +5099,10 @@ class MainWindow(QMainWindow):
 
         if agregando_a_cuenta:
             for pedido_anterior_id in self.pedidos_movil_actuales:
-                actualizar_estado_pedido_movil(
-                    pedido_anterior_id, "Pendiente"
-                )
+                if obtener_estado_pedido_movil(pedido_anterior_id)[4] == "En caja":
+                    actualizar_estado_pedido_movil(
+                        pedido_anterior_id, "Pendiente"
+                    )
 
         self.pedidos_movil_actuales = []
         self.mesa_cuenta_actual = None
@@ -5213,6 +5288,8 @@ class MainWindow(QMainWindow):
         self.mesa_cuenta_actual = mesa
         self.carrito_cuenta_original = list(self.carrito)
         self.aplicar_cuentas_capturadas(pedido_ids)
+        if not self.carrito:
+            return
         self.actualizar_total()
         self.actualizar_contexto_cuenta()
         QMessageBox.information(
@@ -5249,6 +5326,8 @@ class MainWindow(QMainWindow):
         self.mesa_cuenta_actual = mesa
         self.carrito_cuenta_original = list(self.carrito)
         self.aplicar_cuentas_capturadas(pedido_ids)
+        if not self.carrito:
+            return
         self.actualizar_total()
         self.actualizar_contexto_cuenta()
         QMessageBox.information(
@@ -5258,32 +5337,38 @@ class MainWindow(QMainWindow):
         )
 
     def aplicar_cuentas_capturadas(self, pedido_ids):
-        cuentas = [
-            cuenta for cuenta in obtener_cuentas_pedidos(pedido_ids) if cuenta
-        ]
-        if len(cuentas) < 2:
+        if not self.mesa_cuenta_actual:
             return False
-        respuesta = QMessageBox.question(
-            self, "Pedido separado desde mesero",
-            f"Este pedido fue capturado en {len(cuentas)} cuentas.\n\n"
-            "¿Deseas conservarlas separadas para cobrarlas una por una?\n"
-            "Selecciona No para unir toda la mesa en una sola cuenta.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
+        comensales = [
+            cuenta for cuenta in obtener_comensales_mesa(self.mesa_cuenta_actual)
+            if cuenta["estado"] == "ABIERTO" and cuenta["productos"]
+        ]
+        if not comensales:
+            return False
+        opciones = [
+            f"Comensal {c['numero']} · ${c['total']:.2f} · "
+            f"{len(c['productos'])} producto(s)"
+            for c in comensales
+        ]
+        seleccion, ok = QInputDialog.getItem(
+            self, "Seleccionar comensal",
+            "Elige la cuenta que deseas ver, agregar productos o cobrar:",
+            opciones, 0, False,
         )
-        if respuesta != QMessageBox.Yes:
+        if not ok:
+            self.cancelar_pedido()
             return False
-        self.carrito = list(cuentas[0])
-        self.cuentas_divididas_pendientes = [list(cuenta) for cuenta in cuentas[1:]]
-        self.carrito_restante_division = [
-            producto
-            for cuenta in self.cuentas_divididas_pendientes
-            for producto in cuenta
-        ]
-        self.numero_cuenta_division_actual = 1
-        self.total_cuentas_division = len(cuentas)
+        cuenta = comensales[opciones.index(seleccion)]
+        self.carrito = list(cuenta["productos"])
+        self.comensal_cuenta_actual = cuenta["numero"]
+        self.cuentas_divididas_pendientes = []
+        self.carrito_restante_division = []
+        self.numero_cuenta_division_actual = 0
+        self.total_cuentas_division = len(comensales)
         self.carrito_cuenta_original = list(self.carrito)
         self.total = sum(precio for _nombre, precio in self.carrito)
         self.actualizar_lista_pedido()
+        self.actualizar_contexto_cuenta()
         return True
 
     def mostrar_corte_caja(self):
