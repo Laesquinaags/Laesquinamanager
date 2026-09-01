@@ -5068,6 +5068,22 @@ class MainWindow(QMainWindow):
             )
             if not ok:
                 return
+
+        comensal_a_enviar = self.comensal_cuenta_actual or 1
+        es_mesa = str(mesa).startswith("Mesa ")
+        if not agregando_a_cuenta and not self.destino_para_llevar and es_mesa:
+            comensal_a_enviar, ok = QInputDialog.getInt(
+                self,
+                "Asignar comensal",
+                "Número de comensal para estos productos:",
+                1,
+                1,
+                20,
+                1,
+            )
+            if not ok:
+                return
+
         mesero, ok = QInputDialog.getText(
             self, "Mesero", "Nombre del mesero:", text="Caja"
         )
@@ -5085,7 +5101,7 @@ class MainWindow(QMainWindow):
             pedido_id, total = crear_pedido_desde_pc(
                 mesa, mesero.strip(), productos_a_enviar, notas.strip(),
                 self.empleado_actual["id"],
-                self.comensal_cuenta_actual or 1,
+                comensal_a_enviar,
             )
             registrar_auditoria(
                 self.empleado_actual, "Enviar", "Pedido", pedido_id,
