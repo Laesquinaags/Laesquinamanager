@@ -146,6 +146,29 @@ def crear_tablas():
         )
     """)
 
+    # Un pago parcial no cierra la mesa. Cada fila identifica la parte de un
+    # pedido perteneciente a un comensal que ya fue convertida en venta.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS pagos_comensal(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT NOT NULL,
+            mesa TEXT NOT NULL,
+            comensal_numero INTEGER NOT NULL,
+            venta_id INTEGER NOT NULL UNIQUE,
+            FOREIGN KEY (venta_id) REFERENCES ventas(id)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS pago_comensal_detalle(
+            pago_id INTEGER NOT NULL,
+            pedido_id INTEGER NOT NULL,
+            comensal_numero INTEGER NOT NULL,
+            PRIMARY KEY(pedido_id, comensal_numero),
+            FOREIGN KEY (pago_id) REFERENCES pagos_comensal(id) ON DELETE CASCADE,
+            FOREIGN KEY (pedido_id) REFERENCES pedidos_movil(id)
+        )
+    """)
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS empleados(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -292,6 +315,10 @@ def crear_tablas():
     cur.execute("""
         CREATE INDEX IF NOT EXISTS idx_pedidos_movil_estado_fecha
         ON pedidos_movil(estado, fecha)
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_pagos_comensal_mesa
+        ON pagos_comensal(mesa, fecha)
     """)
 
     # Migracion para instalaciones que ya recibieron pedidos moviles.
@@ -1899,7 +1926,8 @@ def crear_pedido_movil(mesa, mesero, items, notas="", empleado_id=None):
         conn.close()
 
 
-def crear_pedido_desde_pc(mesa, mesero, productos, notas="", empleado_id=None):
+def crear_pedido_desde_pc(mesa, mesero, productos, notas="", empleado_id=None,
+                          comensal_numero=1):
     """Convierte el carrito de caja en una comanda, sin crear una venta."""
     if not productos:
         raise ValueError("Agrega al menos un producto.")
@@ -1922,7 +1950,8 @@ def crear_pedido_desde_pc(mesa, mesero, productos, notas="", empleado_id=None):
     finally:
         conn.close()
     items = [
-        {"producto_id": producto_id, "cantidad": cantidad}
+        {"producto_id": producto_id, "cantidad": cantidad,
+         "cuenta_numero": int(comensal_numero or 1)}
         for producto_id, cantidad in cantidades.items()
     ]
     return crear_pedido_movil(mesa, mesero, items, notas, empleado_id)
@@ -1945,7 +1974,7 @@ def crear_saldo_cuenta(mesa, empleado, productos):
     return pedido_id, total
 
 
-def obtener_pedidos_movil(estados=("Pendiente", "En caja"), limite=200):
+def obtener_pedidos_movil(estados=("Pendiente", "En caja", "Parcial"), limite=200):
     conn = conectar()
     cur = conn.cursor()
     marcadores = ",".join("?" for _ in estados)
@@ -2036,6 +2065,125 @@ def obtener_cuentas_pedidos(pedido_ids):
                         [(nombre, precio)] * cantidad
                     )
     return cuentas if any(cuentas) else []
+
+
+def _cuentas_documento_pedido(pedido_id, numero_cuentas, cuentas_json):
+    """Devuelve productos unitarios por comensal para un pedido."""
+    try:
+        documento = json.loads(cuentas_json or "")
+    except (TypeError, json.JSONDecodeError):
+        documento = {}
+    maximo = max(1, min(8, int(documento.get("numero_cuentas", numero_cuentas or 1))))
+    cuentas = [[] for _ in range(maximo)]
+    for item in documento.get("items", []):
+        nombre = str(item.get("producto", "Producto"))
+        precio = float(item.get("precio", 0))
+        cantidad = int(item.get("cantidad", 0))
+        compartidas = sorted({
+            int(n) for n in item.get("cuentas_compartidas", [])
+            if str(n).isdigit() and 1 <= int(n) <= maximo
+        })
+        if compartidas:
+            centavos = int(round(precio * cantidad * 100))
+            base, sobrantes = divmod(centavos, len(compartidas))
+            for posicion, numero in enumerate(compartidas):
+                importe = (base + (1 if posicion < sobrantes else 0)) / 100
+                cuentas[numero - 1].append((nombre, importe, int(pedido_id)))
+        else:
+            numero = int(item.get("cuenta_numero", 1) or 1)
+            if 1 <= numero <= maximo:
+                cuentas[numero - 1].extend(
+                    [(nombre, precio, int(pedido_id))] * cantidad
+                )
+    return cuentas
+
+
+def obtener_comensales_mesa(mesa, incluir_pagados=True):
+    """Detalle vigente de cada comensal, usado igual en PC y celular."""
+    conn = conectar()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, numero_cuentas, cuentas_json
+        FROM pedidos_movil
+        WHERE mesa=? AND estado IN ('Pendiente', 'En caja', 'Parcial')
+        ORDER BY fecha, id
+    """, (str(mesa),))
+    pedidos = cur.fetchall()
+    cur.execute("""
+        SELECT d.pedido_id, d.comensal_numero
+        FROM pago_comensal_detalle d
+        JOIN pagos_comensal p ON p.id=d.pago_id
+        WHERE p.mesa=?
+    """, (str(mesa),))
+    pagados = set(cur.fetchall())
+    conn.close()
+    maximo = max([int(f[1] or 1) for f in pedidos] or [1])
+    resultado = []
+    for numero in range(1, min(maximo, 8) + 1):
+        productos = []
+        tuvo_productos = False
+        for pedido_id, cantidad, documento in pedidos:
+            cuenta = _cuentas_documento_pedido(pedido_id, cantidad, documento)
+            if numero <= len(cuenta) and cuenta[numero - 1]:
+                tuvo_productos = True
+                if (pedido_id, numero) not in pagados:
+                    productos.extend(cuenta[numero - 1])
+        if productos or (incluir_pagados and tuvo_productos):
+            resultado.append({
+                "numero": numero,
+                "nombre": f"Comensal {numero}",
+                "productos": [(n, p) for n, p, _pedido in productos],
+                "pedido_ids": sorted({pedido for _n, _p, pedido in productos}),
+                "total": round(sum(p for _n, p, _pedido in productos), 2),
+                "estado": "PAGADO" if tuvo_productos and not productos else "ABIERTO",
+            })
+    return resultado
+
+
+def registrar_pago_comensal(mesa, comensal_numero, venta_id, pedido_ids):
+    """Cierra solo las partes del comensal y conserva abiertas las demás."""
+    numero = int(comensal_numero)
+    ids = sorted({int(pedido_id) for pedido_id in pedido_ids})
+    if not ids:
+        raise ValueError("El comensal no tiene productos pendientes.")
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+        ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cur.execute("""
+            INSERT INTO pagos_comensal(fecha, mesa, comensal_numero, venta_id)
+            VALUES (?, ?, ?, ?)
+        """, (ahora, str(mesa), numero, int(venta_id)))
+        pago_id = cur.lastrowid
+        for pedido_id in ids:
+            cur.execute("""
+                INSERT INTO pago_comensal_detalle
+                (pago_id, pedido_id, comensal_numero) VALUES (?, ?, ?)
+            """, (pago_id, pedido_id, numero))
+
+        for pedido_id in ids:
+            cur.execute("""
+                SELECT numero_cuentas, cuentas_json FROM pedidos_movil WHERE id=?
+            """, (pedido_id,))
+            fila = cur.fetchone()
+            if not fila:
+                continue
+            cuentas = _cuentas_documento_pedido(pedido_id, fila[0], fila[1])
+            con_productos = {i + 1 for i, productos in enumerate(cuentas) if productos}
+            cur.execute("""
+                SELECT comensal_numero FROM pago_comensal_detalle WHERE pedido_id=?
+            """, (pedido_id,))
+            cubiertas = {f[0] for f in cur.fetchall()}
+            estado = "Cobrado" if con_productos <= cubiertas else "Parcial"
+            cur.execute("""
+                UPDATE pedidos_movil SET estado=?, actualizado_en=? WHERE id=?
+            """, (estado, ahora, pedido_id))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def obtener_etiquetas_cuentas_pedido(pedido_id):
@@ -2153,7 +2301,7 @@ def obtener_pedidos_mesa(mesa):
         SELECT id, fecha, mesa, mesero, notas, total, estado,
                estado_cocina, venta_id
         FROM pedidos_movil
-        WHERE mesa=? AND estado IN ('Pendiente', 'En caja')
+        WHERE mesa=? AND estado IN ('Pendiente', 'En caja', 'Parcial')
         ORDER BY fecha, id
     """, (str(mesa),))
     filas = cur.fetchall()
@@ -2166,20 +2314,22 @@ def obtener_resumen_mesas():
     conn = conectar()
     cur = conn.cursor()
     cur.execute("""
-        SELECT mesa, COUNT(*), COALESCE(SUM(total), 0), MIN(fecha),
-               GROUP_CONCAT(DISTINCT mesero)
+        SELECT mesa, COUNT(*), MIN(fecha), GROUP_CONCAT(DISTINCT mesero)
         FROM pedidos_movil
-        WHERE estado IN ('Pendiente', 'En caja')
+        WHERE estado IN ('Pendiente', 'En caja', 'Parcial')
         GROUP BY mesa
     """)
-    ocupadas = {
-        fila[0]: {
-            "pedidos": fila[1], "total": fila[2],
-            "desde": fila[3], "meseros": fila[4] or "",
-        }
-        for fila in cur.fetchall()
-    }
+    filas = cur.fetchall()
     conn.close()
+    ocupadas = {}
+    for mesa, pedidos, desde, meseros in filas:
+        comensales = obtener_comensales_mesa(mesa, incluir_pagados=False)
+        total = round(sum(c["total"] for c in comensales), 2)
+        if total > 0:
+            ocupadas[mesa] = {
+                "pedidos": pedidos, "total": total, "desde": desde,
+                "meseros": meseros or "", "comensales": comensales,
+            }
     # Los pedidos para llevar usan una referencia propia (cliente y folio).
     # Se agregan a la lista mientras estén activos para que puedan cargarse y
     # cobrarse igual que una mesa, sin ocupar una mesa física.
