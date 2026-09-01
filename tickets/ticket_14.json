@@ -1,0 +1,31 @@
+{
+  "venta_id": 14,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Enchiladas Suizas",
+      130.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ]
+  ],
+  "total": 415.0,
+  "metodo": "Tarjeta",
+  "personas": 1,
+  "origen": "UAA / Alberca",
+  "recibido": null,
+  "cambio": null
+}

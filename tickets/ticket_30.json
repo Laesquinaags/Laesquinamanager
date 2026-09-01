@@ -1,0 +1,27 @@
+{
+  "venta_id": 30,
+  "productos": [
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Refresco",
+      35.0
+    ]
+  ],
+  "total": 110.0,
+  "metodo": "Tarjeta",
+  "personas": 1,
+  "origen": "Ya había venido",
+  "recibido": null,
+  "cambio": null
+}

@@ -1,0 +1,23 @@
+{
+  "venta_id": 29,
+  "productos": [
+    [
+      "Huevos Rancheros",
+      110.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ],
+    [
+      "Agua de sabor",
+      30.0
+    ]
+  ],
+  "total": 250.0,
+  "metodo": "Tarjeta",
+  "personas": 1,
+  "origen": "Ya había visto el local",
+  "recibido": null,
+  "cambio": null
+}

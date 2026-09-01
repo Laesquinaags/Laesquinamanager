@@ -1,0 +1,23 @@
+{
+  "venta_id": 5,
+  "productos": [
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Agua de sabor",
+      30.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ]
+  ],
+  "total": 155.0,
+  "metodo": "Efectivo",
+  "personas": 1,
+  "origen": "Ya había visto el local",
+  "recibido": 200.0,
+  "cambio": 45.0
+}

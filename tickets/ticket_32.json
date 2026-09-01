@@ -1,0 +1,19 @@
+{
+  "venta_id": 32,
+  "productos": [
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Chilaquiles",
+      95.0
+    ]
+  ],
+  "total": 190.0,
+  "metodo": "Tarjeta",
+  "personas": 2,
+  "origen": "Ya había visto el local",
+  "recibido": null,
+  "cambio": null
+}

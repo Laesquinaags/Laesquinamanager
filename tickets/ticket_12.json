@@ -1,0 +1,31 @@
+{
+  "venta_id": 12,
+  "productos": [
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Omelette",
+      115.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ]
+  ],
+  "total": 330.0,
+  "metodo": "Tarjeta",
+  "personas": 2,
+  "origen": "Google Maps",
+  "recibido": null,
+  "cambio": null
+}

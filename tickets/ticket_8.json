@@ -1,0 +1,75 @@
+{
+  "venta_id": 8,
+  "productos": [
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Torta de Chilaquiles",
+      95.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Refresco",
+      35.0
+    ],
+    [
+      "Refresco",
+      35.0
+    ],
+    [
+      "Agua de sabor",
+      30.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Limonada/bebida preparada",
+      35.0
+    ],
+    [
+      "Limonada/bebida preparada",
+      35.0
+    ],
+    [
+      "Burrito ahogado",
+      85.0
+    ]
+  ],
+  "total": 960.0,
+  "metodo": "Tarjeta",
+  "personas": 8,
+  "origen": "Recomendación",
+  "recibido": null,
+  "cambio": null
+}

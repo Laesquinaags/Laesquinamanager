@@ -1,0 +1,39 @@
+{
+  "venta_id": 36,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Agua de sabor",
+      30.0
+    ],
+    [
+      "Agua de sabor",
+      30.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ]
+  ],
+  "total": 505.0,
+  "metodo": "Efectivo",
+  "personas": 3,
+  "origen": "Pasaba por aquí",
+  "recibido": 505.0,
+  "cambio": 0.0
+}

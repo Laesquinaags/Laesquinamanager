@@ -1,0 +1,55 @@
+{
+  "venta_id": 62,
+  "productos": [
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ]
+  ],
+  "total": 710.0,
+  "metodo": "Efectivo",
+  "personas": 3,
+  "origen": "Pasaba por aquí",
+  "recibido": 710.0,
+  "cambio": 0.0
+}

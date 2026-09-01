@@ -1,0 +1,39 @@
+{
+  "venta_id": 49,
+  "productos": [
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Huevos al gusto",
+      100.0
+    ],
+    [
+      "Club Sandwich",
+      130.0
+    ]
+  ],
+  "total": 425.0,
+  "metodo": "Tarjeta",
+  "personas": 4,
+  "origen": "Ya había venido",
+  "recibido": null,
+  "cambio": null
+}

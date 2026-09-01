@@ -1,0 +1,19 @@
+{
+  "venta_id": 60,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ]
+  ],
+  "total": 165.0,
+  "metodo": "Efectivo",
+  "personas": 1,
+  "origen": "Ya había visto el local",
+  "recibido": 165.0,
+  "cambio": 0.0
+}

@@ -1,0 +1,55 @@
+{
+  "venta_id": 27,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Enchiladas Suizas",
+      130.0
+    ],
+    [
+      "Torta de Chilaquiles",
+      95.0
+    ],
+    [
+      "Capuchino",
+      70.0
+    ],
+    [
+      "Capuchino",
+      70.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Bites 20",
+      150.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Limonada/bebida preparada",
+      35.0
+    ]
+  ],
+  "total": 850.0,
+  "metodo": "Tarjeta",
+  "personas": 3,
+  "origen": "Pasaba por aquí",
+  "recibido": null,
+  "cambio": null
+}

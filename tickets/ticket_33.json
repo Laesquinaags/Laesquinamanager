@@ -1,0 +1,15 @@
+{
+  "venta_id": 33,
+  "productos": [
+    [
+      "Agua",
+      20.0
+    ]
+  ],
+  "total": 20.0,
+  "metodo": "Tarjeta",
+  "personas": 1,
+  "origen": "Ya había venido",
+  "recibido": null,
+  "cambio": null
+}

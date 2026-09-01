@@ -1,0 +1,19 @@
+{
+  "venta_id": 20,
+  "productos": [
+    [
+      "Enchiladas Suizas",
+      130.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ]
+  ],
+  "total": 160.0,
+  "metodo": "Tarjeta",
+  "personas": 1,
+  "origen": "Ya había venido",
+  "recibido": null,
+  "cambio": null
+}

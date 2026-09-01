@@ -1,0 +1,43 @@
+{
+  "venta_id": 47,
+  "productos": [
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Huevos Rancheros",
+      110.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Refresco",
+      35.0
+    ],
+    [
+      "Huevos al gusto",
+      100.0
+    ]
+  ],
+  "total": 615.0,
+  "metodo": "Tarjeta",
+  "personas": 4,
+  "origen": "Pasaba por aquí",
+  "recibido": null,
+  "cambio": null
+}

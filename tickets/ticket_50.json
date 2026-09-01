@@ -1,0 +1,39 @@
+{
+  "venta_id": 50,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Huevos Rancheros",
+      110.0
+    ],
+    [
+      "Huevos Rancheros",
+      110.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Refresco",
+      35.0
+    ]
+  ],
+  "total": 570.0,
+  "metodo": "Tarjeta",
+  "personas": 3,
+  "origen": "Pasaba por aquí",
+  "recibido": null,
+  "cambio": null
+}

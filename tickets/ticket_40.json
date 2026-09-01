@@ -1,0 +1,15 @@
+{
+  "venta_id": 40,
+  "productos": [
+    [
+      "Capuchino",
+      70.0
+    ]
+  ],
+  "total": 70.0,
+  "metodo": "Tarjeta",
+  "personas": 1,
+  "origen": "Pasaba por aquí",
+  "recibido": null,
+  "cambio": null
+}

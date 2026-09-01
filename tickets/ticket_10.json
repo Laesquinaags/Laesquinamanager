@@ -1,0 +1,27 @@
+{
+  "venta_id": 10,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Omelette",
+      115.0
+    ],
+    [
+      "Agua de sabor",
+      30.0
+    ],
+    [
+      "Agua de sabor",
+      30.0
+    ]
+  ],
+  "total": 310.0,
+  "metodo": "Efectivo",
+  "personas": 2,
+  "origen": "Recomendación",
+  "recibido": 310.0,
+  "cambio": 0.0
+}

@@ -1,0 +1,27 @@
+{
+  "venta_id": 39,
+  "productos": [
+    [
+      "Enchiladas Suizas",
+      130.0
+    ],
+    [
+      "Huevos Rancheros",
+      110.0
+    ],
+    [
+      "Capuchino",
+      70.0
+    ],
+    [
+      "Agua de sabor",
+      30.0
+    ]
+  ],
+  "total": 340.0,
+  "metodo": "Tarjeta",
+  "personas": 2,
+  "origen": "Pasaba por aquí",
+  "recibido": null,
+  "cambio": null
+}

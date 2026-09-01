@@ -1,0 +1,23 @@
+{
+  "venta_id": 7,
+  "productos": [
+    [
+      "Torta de Chilaquiles",
+      95.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ]
+  ],
+  "total": 235.0,
+  "metodo": "Efectivo",
+  "personas": 2,
+  "origen": "Ya había venido",
+  "recibido": 300.0,
+  "cambio": 65.0
+}

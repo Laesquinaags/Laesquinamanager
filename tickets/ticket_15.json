@@ -1,0 +1,31 @@
+{
+  "venta_id": 15,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Refresco",
+      35.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ]
+  ],
+  "total": 280.0,
+  "metodo": "Tarjeta",
+  "personas": 2,
+  "origen": "Pasaba por aquí",
+  "recibido": null,
+  "cambio": null
+}

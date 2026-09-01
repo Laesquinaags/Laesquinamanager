@@ -1,0 +1,27 @@
+{
+  "venta_id": 18,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Omelette",
+      115.0
+    ]
+  ],
+  "total": 325.0,
+  "metodo": "Tarjeta",
+  "personas": 2,
+  "origen": "Pasaba por aquí",
+  "recibido": null,
+  "cambio": null
+}

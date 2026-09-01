@@ -1,0 +1,67 @@
+{
+  "venta_id": 43,
+  "productos": [
+    [
+      "Chilaquiles",
+      95.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de milanesa",
+      25.0
+    ],
+    [
+      "Taco de milanesa",
+      25.0
+    ],
+    [
+      "Complemento",
+      30.0
+    ],
+    [
+      "Leche",
+      30.0
+    ],
+    [
+      "Leche",
+      30.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Agua",
+      20.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ]
+  ],
+  "total": 590.0,
+  "metodo": "Efectivo",
+  "personas": 4,
+  "origen": "Ya había visto el local",
+  "recibido": 590.0,
+  "cambio": 0.0
+}

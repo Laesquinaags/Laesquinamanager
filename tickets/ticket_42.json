@@ -1,0 +1,27 @@
+{
+  "venta_id": 42,
+  "productos": [
+    [
+      "Huevos Rancheros",
+      110.0
+    ],
+    [
+      "Huevos Rancheros",
+      110.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ],
+    [
+      "Jugo",
+      45.0
+    ]
+  ],
+  "total": 310.0,
+  "metodo": "Efectivo",
+  "personas": 2,
+  "origen": "Pasaba por aquí",
+  "recibido": 310.0,
+  "cambio": 0.0
+}

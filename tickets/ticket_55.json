@@ -1,0 +1,31 @@
+{
+  "venta_id": 55,
+  "productos": [
+    [
+      "Huevos Rancheros",
+      110.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ]
+  ],
+  "total": 475.0,
+  "metodo": "Tarjeta",
+  "personas": 2,
+  "origen": "Ya había venido",
+  "recibido": null,
+  "cambio": null
+}

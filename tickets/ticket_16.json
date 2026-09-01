@@ -1,0 +1,15 @@
+{
+  "venta_id": 16,
+  "productos": [
+    [
+      "Pan Francés",
+      110.0
+    ]
+  ],
+  "total": 110.0,
+  "metodo": "Tarjeta",
+  "personas": 1,
+  "origen": "UAA / Alberca",
+  "recibido": null,
+  "cambio": null
+}

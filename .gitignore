@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Compilaciones
+build/
+build_exe/
+dist/
+*.exe
+
+# Respaldos del proyecto
+respaldos/
+respaldo_*/
+copia LaEsquinaManager/
+Paquete_Traslado_LaEsquinaManager/
+
+# Bases de datos y datos locales
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos temporales
+*.log
+*.tmp
+*.bak
+
+# VS Code / sistema
+.vscode/
+.DS_Store
+Thumbs.db
+# PyInstaller
+*.spec
+
+# Archivos comprimidos
+*.zip
+*.rar

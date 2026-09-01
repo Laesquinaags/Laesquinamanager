@@ -1,0 +1,9 @@
+{
+  "name": "Punto de Venta Express",
+  "short_name": "PV Express",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#101119",
+  "theme_color": "#e5b820",
+  "icons": []
+}

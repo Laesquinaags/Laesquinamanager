@@ -1,0 +1,27 @@
+{
+  "venta_id": 48,
+  "productos": [
+    [
+      "Pan Francés",
+      110.0
+    ],
+    [
+      "Quesadillas fritas",
+      75.0
+    ],
+    [
+      "Torta de milanesa",
+      95.0
+    ],
+    [
+      "Torta de milanesa",
+      95.0
+    ]
+  ],
+  "total": 375.0,
+  "metodo": "Tarjeta",
+  "personas": 3,
+  "origen": "Ya había venido",
+  "recibido": null,
+  "cambio": null
+}

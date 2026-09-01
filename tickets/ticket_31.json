@@ -1,0 +1,15 @@
+{
+  "venta_id": 31,
+  "productos": [
+    [
+      "Plato completo",
+      95.0
+    ]
+  ],
+  "total": 95.0,
+  "metodo": "Efectivo",
+  "personas": 1,
+  "origen": "Pasaba por aquí",
+  "recibido": 95.0,
+  "cambio": 0.0
+}

@@ -1,0 +1,19 @@
+{
+  "venta_id": 59,
+  "productos": [
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ]
+  ],
+  "total": 195.0,
+  "metodo": "Tarjeta",
+  "personas": 1,
+  "origen": "Ya había visto el local",
+  "recibido": null,
+  "cambio": null
+}

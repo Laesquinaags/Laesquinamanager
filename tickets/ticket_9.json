@@ -1,0 +1,35 @@
+{
+  "venta_id": 9,
+  "productos": [
+    [
+      "Chilaquiles Rellenos",
+      135.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Taco de carnitas",
+      25.0
+    ],
+    [
+      "Pan Francés",
+      110.0
+    ],
+    [
+      "Café",
+      60.0
+    ],
+    [
+      "Café",
+      60.0
+    ]
+  ],
+  "total": 415.0,
+  "metodo": "Efectivo",
+  "personas": 2,
+  "origen": "Ya había venido",
+  "recibido": 415.0,
+  "cambio": 0.0
+}
