@@ -76,6 +76,8 @@ from app.database.database import (
     contar_pedidos_pendientes,
     obtener_detalle_pedido_movil,
     obtener_cuentas_pedidos,
+    obtener_comensales_mesa,
+    marcar_comensal_pagado,
     obtener_estado_pedido_movil,
     actualizar_estado_pedido_movil,
     obtener_resumen_mesas,
@@ -3638,6 +3640,7 @@ class MainWindow(QMainWindow):
         self.cuentas_divididas_pendientes = []
         self.numero_cuenta_division_actual = 0
         self.total_cuentas_division = 0
+        self.comensal_cobro_actual = None
         self.servidor_movil_url = None
         self.servidor_movil_error = None
         self.filtro_categoria = "Todos"
@@ -4188,6 +4191,16 @@ class MainWindow(QMainWindow):
         """)
         boton_dividir.clicked.connect(self.dividir_cuenta)
 
+        boton_comensal = QPushButton("COBRAR COMENSAL")
+        boton_comensal.setFixedHeight(38)
+        boton_comensal.setStyleSheet("""
+            QPushButton {
+                font-size:14px;font-weight:bold;background-color:#8e44ad;
+                color:white;border-radius:8px;
+            }
+        """)
+        boton_comensal.clicked.connect(self.cobrar_comensal)
+
         self.boton_enviar_mesa = QPushButton("ENVIAR A MESA / COCINA")
         self.boton_enviar_mesa.setFixedHeight(44)
         self.boton_enviar_mesa.setStyleSheet("""
@@ -4219,6 +4232,7 @@ class MainWindow(QMainWindow):
         boton_historial.setEnabled(es_caja)
         boton_cobrar.setEnabled(es_caja)
         boton_dividir.setEnabled(es_caja)
+        boton_comensal.setEnabled(es_caja)
         self.boton_enviar_mesa.setEnabled(rol in ("Administrador", "Caja", "Mesero"))
         boton_imprimir_cuenta.setEnabled(rol != "Cocina")
         boton_mesas.setEnabled(rol != "Cocina")
@@ -4327,6 +4341,7 @@ class MainWindow(QMainWindow):
         layout_documentos.setSpacing(7)
         layout_documentos.addWidget(boton_imprimir_cuenta)
         layout_documentos.addWidget(boton_dividir)
+        layout_documentos.addWidget(boton_comensal)
 
         layout_pedido.addWidget(barra_pedido)
         layout_pedido.addWidget(self.aviso_cuenta_activa)
@@ -4448,6 +4463,15 @@ class MainWindow(QMainWindow):
             )
             self.aviso_cuenta_activa.show()
             self.boton_enviar_mesa.setText("ENVIAR PEDIDO PARA LLEVAR")
+            return
+        if self.comensal_cobro_actual:
+            self.aviso_cuenta_activa.setText(
+                f"COBRANDO COMENSAL {self.comensal_cobro_actual} · "
+                f"{self.mesa_cuenta_actual}\n"
+                "Los demás comensales permanecerán con su cuenta abierta."
+            )
+            self.aviso_cuenta_activa.show()
+            self.boton_enviar_mesa.setText("COBRO INDIVIDUAL - NO ENVIAR A COCINA")
             return
         if self.numero_cuenta_division_actual:
             self.aviso_cuenta_activa.setText(
@@ -4593,6 +4617,7 @@ class MainWindow(QMainWindow):
         self.cuentas_divididas_pendientes = []
         self.numero_cuenta_division_actual = 0
         self.total_cuentas_division = 0
+        self.comensal_cobro_actual = None
         self.carrito.clear()
         self.notas_rapidas.clear()
         self.total = 0.0
@@ -4644,6 +4669,48 @@ class MainWindow(QMainWindow):
             f"Ahora se cobrará la Cuenta 1 por ${self.total:.2f}.\n"
             "Después de cada cobro se cargará automáticamente la siguiente."
         )
+
+    def cobrar_comensal(self):
+        if not self.mesa_cuenta_actual or not self.pedidos_movil_actuales:
+            QMessageBox.warning(
+                self, "Cuenta sin mesa",
+                "Primero carga una mesa desde Cuentas activas o Mesas y Barra."
+            )
+            return
+        cuentas = obtener_comensales_mesa(self.mesa_cuenta_actual)
+        pendientes = [c for c in cuentas if not c["pagada"] and c["productos"]]
+        if len(cuentas) < 2:
+            QMessageBox.information(
+                self, "Una sola cuenta",
+                "Esta mesa no tiene varios comensales asignados."
+            )
+            return
+        opciones = [
+            f"Comensal {c['numero']} · \${c['total']:.2f}"
+            for c in pendientes
+        ]
+        if not opciones:
+            QMessageBox.information(
+                self, "Sin saldos", "No hay comensales con saldo pendiente."
+            )
+            return
+        opcion, ok = QInputDialog.getItem(
+            self, "Cobrar comensal", "Selecciona el comensal:", opciones, 0, False
+        )
+        if not ok:
+            return
+        cuenta = pendientes[opciones.index(opcion)]
+        self.comensal_cobro_actual = cuenta["numero"]
+        self.carrito = [
+            (producto["nombre"], producto["precio"])
+            for producto in cuenta["productos"]
+            for _ in range(producto["cantidad"])
+        ]
+        self.total = sum(precio for _nombre, precio in self.carrito)
+        self.carrito_cuenta_original = list(self.carrito)
+        self.actualizar_lista_pedido()
+        self.actualizar_total()
+        self.actualizar_contexto_cuenta()
 
     def cobrar(self):
         if not self.carrito:
@@ -4771,7 +4838,19 @@ class MainWindow(QMainWindow):
                 self.carrito_restante_division,
             )
 
-        if self.pedidos_movil_actuales:
+        if self.comensal_cobro_actual and self.mesa_cuenta_actual:
+            marcar_comensal_pagado(
+                self.mesa_cuenta_actual, self.comensal_cobro_actual, venta_id
+            )
+            for pedido_id in self.pedidos_movil_actuales:
+                estado = obtener_estado_pedido_movil(pedido_id)
+                if estado and estado[4] == "En caja":
+                    try:
+                        actualizar_estado_pedido_movil(pedido_id, "Pendiente")
+                    except ValueError:
+                        pass
+            self.pedidos_movil_actuales = []
+        elif self.pedidos_movil_actuales:
             for pedido_id in self.pedidos_movil_actuales:
                 actualizar_estado_pedido_movil(
                     pedido_id, "Cobrado", venta_id
