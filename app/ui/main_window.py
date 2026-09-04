@@ -5062,8 +5062,28 @@ class MainWindow(QMainWindow):
             )
             return
 
+        numero_cuentas = 1
+        cuenta_numero = 1
         if agregando_a_cuenta:
             mesa = self.mesa_cuenta_actual
+            cuentas_existentes = obtener_comensales_mesa(mesa)
+            numero_cuentas = max(1, len(cuentas_existentes))
+            pendientes = [
+                cuenta for cuenta in cuentas_existentes
+                if not cuenta["pagada"]
+            ]
+            opciones = [
+                f"Comensal {cuenta['numero']}"
+                for cuenta in pendientes
+            ] or [f"Comensal {numero}" for numero in range(1, numero_cuentas + 1)]
+            opcion, ok = QInputDialog.getItem(
+                self, "Agregar productos",
+                "¿A qué comensal pertenecen los productos nuevos?",
+                opciones, 0, False,
+            )
+            if not ok:
+                return
+            cuenta_numero = int(opcion.split()[-1])
         elif self.destino_para_llevar:
             mesa = self.destino_para_llevar
         else:
@@ -5074,6 +5094,26 @@ class MainWindow(QMainWindow):
             )
             if not ok:
                 return
+            if mesa != "Barra":
+                numero_cuentas, ok = QInputDialog.getInt(
+                    self, "Comensales",
+                    "¿Cuántos comensales hay en esta mesa?",
+                    value=1, minValue=1, maxValue=8, step=1,
+                )
+                if not ok:
+                    return
+                opciones = [
+                    f"Comensal {numero}"
+                    for numero in range(1, numero_cuentas + 1)
+                ]
+                opcion, ok = QInputDialog.getItem(
+                    self, "Asignar pedido",
+                    "¿A qué comensal pertenece este pedido?",
+                    opciones, 0, False,
+                )
+                if not ok:
+                    return
+                cuenta_numero = int(opcion.split()[-1])
         mesero, ok = QInputDialog.getText(
             self, "Mesero", "Nombre del mesero:", text="Caja"
         )
@@ -5091,6 +5131,8 @@ class MainWindow(QMainWindow):
             pedido_id, total = crear_pedido_desde_pc(
                 mesa, mesero.strip(), productos_a_enviar, notas.strip(),
                 self.empleado_actual["id"],
+                cuenta_numero=cuenta_numero,
+                numero_cuentas=numero_cuentas,
             )
             registrar_auditoria(
                 self.empleado_actual, "Enviar", "Pedido", pedido_id,
