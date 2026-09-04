@@ -2837,13 +2837,13 @@ class MesasDialog(PantallaDialog):
         self.resumen.setObjectName("detalleMesa")
         principal.addWidget(self.resumen)
 
-        self.detalle = QTableWidget(0, 5)
+        self.detalle = QTableWidget(0, 6)
         self.detalle.setHorizontalHeaderLabels([
-            "Pedido", "Producto", "Cantidad", "Precio", "Importe"
+            "Comensal", "Pedido", "Producto", "Cantidad", "Precio", "Importe"
         ])
         self.detalle.setEditTriggers(QTableWidget.NoEditTriggers)
         self.detalle.setAlternatingRowColors(True)
-        self.detalle.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.detalle.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         principal.addWidget(self.detalle)
 
         botones = QHBoxLayout()
@@ -2910,24 +2910,42 @@ class MesasDialog(PantallaDialog):
             ))
         pedidos = obtener_pedidos_mesa(mesa)
         filas = []
-        total = 0.0
         notas = []
+        comensales = obtener_comensales_mesa(mesa)
+        total = sum(
+            cuenta["total"] for cuenta in comensales if not cuenta["pagada"]
+        )
         for pedido in pedidos:
             pedido_id, fecha, _mesa, mesero, nota, subtotal, estado, cocina, _venta = pedido
-            total += subtotal
             if nota:
                 notas.append(f"#{pedido_id}: {nota}")
-            for _producto_id, producto, cantidad, precio in obtener_detalle_pedido_movil(pedido_id):
-                filas.append((pedido_id, producto, cantidad, precio, cantidad * precio))
+        for cuenta in comensales:
+            estado_cuenta = "PAGADO" if cuenta["pagada"] else f"Comensal {cuenta['numero']}"
+            pedido_texto = ", ".join(str(pid) for pid in cuenta.get("pedido_ids", [])) or "—"
+            if not cuenta["productos"]:
+                filas.append((estado_cuenta, pedido_texto, "Sin consumo", 0, 0.0, 0.0))
+                continue
+            for producto in cuenta["productos"]:
+                filas.append((
+                    estado_cuenta,
+                    pedido_texto,
+                    producto["nombre"],
+                    producto["cantidad"],
+                    producto["precio"],
+                    producto["subtotal"],
+                ))
         self.detalle.setRowCount(len(filas))
         for numero, valores in enumerate(filas):
             for columna, valor in enumerate(valores):
-                texto = f"${valor:.2f}" if columna in (3, 4) else str(valor)
+                texto = f"${valor:.2f}" if columna in (4, 5) else str(valor)
                 self.detalle.setItem(numero, columna, QTableWidgetItem(texto))
         if pedidos:
             extra = f"   ·   Notas: {' | '.join(notas)}" if notas else ""
+            pendientes = sum(1 for cuenta in comensales if not cuenta["pagada"])
+            pagados = sum(1 for cuenta in comensales if cuenta["pagada"])
             self.resumen.setText(
-                f"{mesa}: {len(pedidos)} pedido(s) · Total ${total:.2f}{extra}"
+                f"{mesa}: {len(pedidos)} pedido(s) · Pendiente ${total:.2f} · "
+                f"{pendientes} comensal(es) pendiente(s) · {pagados} pagado(s){extra}"
             )
         else:
             self.resumen.setText(f"{mesa}: LIBRE")
