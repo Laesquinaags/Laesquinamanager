@@ -313,6 +313,10 @@ def crear_tablas():
         )
     if not _columna_existe(cur, "pedidos_movil", "cuentas_json"):
         cur.execute("ALTER TABLE pedidos_movil ADD COLUMN cuentas_json TEXT DEFAULT ''")
+    if not _columna_existe(cur, "pedidos_movil", "cuentas_pagadas_json"):
+        cur.execute(
+            "ALTER TABLE pedidos_movil ADD COLUMN cuentas_pagadas_json TEXT DEFAULT '[]'"
+        )
     if not _columna_existe(cur, "detalle_pedido_movil", "cantidad_entregada"):
         cur.execute("""
             ALTER TABLE detalle_pedido_movil
@@ -1899,10 +1903,17 @@ def crear_pedido_movil(mesa, mesero, items, notas="", empleado_id=None):
         conn.close()
 
 
-def crear_pedido_desde_pc(mesa, mesero, productos, notas="", empleado_id=None):
-    """Convierte el carrito de caja en una comanda, sin crear una venta."""
+def crear_pedido_desde_pc(
+    mesa, mesero, productos, notas="", empleado_id=None,
+    cuenta_numero=1, numero_cuentas=1,
+):
+    """Convierte el carrito de caja en una comanda, conservando el comensal."""
     if not productos:
         raise ValueError("Agrega al menos un producto.")
+    cuenta_numero = int(cuenta_numero or 1)
+    numero_cuentas = max(int(numero_cuentas or 1), cuenta_numero)
+    if not 1 <= cuenta_numero <= 8 or not 1 <= numero_cuentas <= 8:
+        raise ValueError("El comensal debe estar entre 1 y 8.")
     conn = conectar()
     cur = conn.cursor()
     cantidades = {}
@@ -1922,7 +1933,11 @@ def crear_pedido_desde_pc(mesa, mesero, productos, notas="", empleado_id=None):
     finally:
         conn.close()
     items = [
-        {"producto_id": producto_id, "cantidad": cantidad}
+        {
+            "producto_id": producto_id,
+            "cantidad": cantidad,
+            "cuenta_numero": cuenta_numero,
+        }
         for producto_id, cantidad in cantidades.items()
     ]
     return crear_pedido_movil(mesa, mesero, items, notas, empleado_id)
@@ -2161,24 +2176,214 @@ def obtener_pedidos_mesa(mesa):
     return filas
 
 
+def _leer_documento_cuentas(numero_cuentas, cuentas_json):
+    try:
+        documento = json.loads(cuentas_json) if cuentas_json else {}
+    except (TypeError, json.JSONDecodeError):
+        documento = {}
+    documento.setdefault("numero_cuentas", int(numero_cuentas or 1))
+    documento.setdefault("items", [])
+    return documento
+
+
+def _leer_cuentas_pagadas(texto):
+    try:
+        valores = json.loads(texto) if texto else []
+    except (TypeError, json.JSONDecodeError):
+        valores = []
+    return {
+        int(valor) for valor in valores
+        if str(valor).isdigit() and 1 <= int(valor) <= 8
+    }
+
+
+def _cuentas_presentes(documento):
+    presentes = set()
+    for item in documento.get("items", []):
+        compartidas = {
+            int(valor) for valor in item.get("cuentas_compartidas", [])
+            if str(valor).isdigit() and 1 <= int(valor) <= 8
+        }
+        if compartidas:
+            presentes.update(compartidas)
+        else:
+            numero = int(item.get("cuenta_numero", 1) or 1)
+            if 1 <= numero <= 8:
+                presentes.add(numero)
+    return presentes or {1}
+
+
+def _productos_por_cuenta_documento(documento, numero):
+    productos = []
+    for item in documento.get("items", []):
+        nombre = str(item.get("producto", "Producto"))
+        precio = float(item.get("precio", 0))
+        cantidad = int(item.get("cantidad", 0))
+        compartidas = [
+            int(valor) for valor in item.get("cuentas_compartidas", [])
+            if str(valor).isdigit() and 1 <= int(valor) <= 8
+        ]
+        if compartidas:
+            if numero not in compartidas:
+                continue
+            centavos = int(round(precio * cantidad * 100))
+            base, sobrantes = divmod(centavos, len(compartidas))
+            posicion = compartidas.index(numero)
+            importe = (base + (1 if posicion < sobrantes else 0)) / 100
+            if importe > 0:
+                productos.append((f"{nombre} (compartido)", importe))
+        elif int(item.get("cuenta_numero", 1) or 1) == numero:
+            productos.extend([(nombre, precio)] * cantidad)
+    return productos
+
+
+def obtener_comensales_mesa(mesa):
+    """Devuelve saldos y productos pendientes por comensal de una mesa."""
+    conn = conectar()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, numero_cuentas, cuentas_json, cuentas_pagadas_json
+        FROM pedidos_movil
+        WHERE mesa=? AND estado IN ('Pendiente', 'En caja')
+        ORDER BY fecha, id
+    """, (str(mesa),))
+    pedidos = cur.fetchall()
+    resultado = {}
+    maximo = 1
+    for pedido_id, numero_cuentas, cuentas_json, pagadas_json in pedidos:
+        documento = _leer_documento_cuentas(numero_cuentas, cuentas_json)
+        maximo = max(maximo, min(8, int(documento.get("numero_cuentas", 1) or 1)))
+        pagadas = _leer_cuentas_pagadas(pagadas_json)
+        presentes = _cuentas_presentes(documento)
+        if not documento.get("items"):
+            cur.execute("""
+                SELECT producto, cantidad, precio
+                FROM detalle_pedido_movil WHERE pedido_id=? ORDER BY id
+            """, (int(pedido_id),))
+            documento = {
+                "numero_cuentas": 1,
+                "items": [
+                    {
+                        "producto": nombre, "cantidad": cantidad, "precio": precio,
+                        "cuenta_numero": 1, "cuentas_compartidas": [],
+                    }
+                    for nombre, cantidad, precio in cur.fetchall()
+                ],
+            }
+            presentes = {1}
+        for numero in presentes:
+            cuenta = resultado.setdefault(numero, {
+                "numero": numero, "productos": [], "total": 0.0,
+                "pagada": True, "pedido_ids": [],
+            })
+            productos = _productos_por_cuenta_documento(documento, numero)
+            if numero not in pagadas:
+                cuenta["pagada"] = False
+                cuenta["pedido_ids"].append(int(pedido_id))
+                cuenta["productos"].extend(productos)
+                cuenta["total"] += sum(precio for _nombre, precio in productos)
+    conn.close()
+    cuentas = []
+    for numero in range(1, maximo + 1):
+        cuenta = resultado.get(numero, {
+            "numero": numero, "productos": [], "total": 0.0,
+            "pagada": False, "pedido_ids": [],
+        })
+        agrupados = {}
+        orden = []
+        for nombre, precio in cuenta["productos"]:
+            clave = (nombre, float(precio))
+            if clave not in agrupados:
+                agrupados[clave] = 0
+                orden.append(clave)
+            agrupados[clave] += 1
+        cuenta["productos"] = [
+            {
+                "nombre": nombre, "precio": precio, "cantidad": agrupados[(nombre, precio)],
+                "subtotal": round(precio * agrupados[(nombre, precio)], 2),
+            }
+            for nombre, precio in orden
+        ]
+        cuenta["total"] = round(cuenta["total"], 2)
+        cuentas.append(cuenta)
+    return cuentas
+
+
+def marcar_comensal_pagado(mesa, numero_comensal, venta_id=None):
+    """Marca solo un comensal como pagado sin cerrar las demás cuentas."""
+    numero_comensal = int(numero_comensal)
+    if not 1 <= numero_comensal <= 8:
+        raise ValueError("Comensal no válido.")
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, numero_cuentas, cuentas_json, cuentas_pagadas_json, estado
+            FROM pedidos_movil
+            WHERE mesa=? AND estado IN ('Pendiente', 'En caja')
+            ORDER BY fecha, id
+        """, (str(mesa),))
+        filas = cur.fetchall()
+        ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        afectados = 0
+        for pedido_id, numero_cuentas, cuentas_json, pagadas_json, estado in filas:
+            documento = _leer_documento_cuentas(numero_cuentas, cuentas_json)
+            presentes = _cuentas_presentes(documento)
+            if not documento.get("items"):
+                presentes = {1}
+            if numero_comensal not in presentes:
+                continue
+            pagadas = _leer_cuentas_pagadas(pagadas_json)
+            pagadas.add(numero_comensal)
+            completo = presentes.issubset(pagadas)
+            if completo:
+                cur.execute("""
+                    UPDATE pedidos_movil
+                    SET cuentas_pagadas_json=?, estado='Cobrado', venta_id=?,
+                        actualizado_en=?
+                    WHERE id=? AND estado IN ('Pendiente', 'En caja')
+                """, (
+                    json.dumps(sorted(pagadas)), venta_id, ahora, int(pedido_id),
+                ))
+            else:
+                cur.execute("""
+                    UPDATE pedidos_movil
+                    SET cuentas_pagadas_json=?, actualizado_en=?
+                    WHERE id=? AND estado IN ('Pendiente', 'En caja')
+                """, (json.dumps(sorted(pagadas)), ahora, int(pedido_id)))
+            afectados += cur.rowcount
+        conn.commit()
+        if not afectados:
+            raise ValueError("Ese comensal ya está pagado o no tiene consumo pendiente.")
+        return afectados
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def obtener_resumen_mesas():
     mesas = [f"Mesa {numero}" for numero in range(1, 21)] + ["Barra"]
     conn = conectar()
     cur = conn.cursor()
     cur.execute("""
-        SELECT mesa, COUNT(*), COALESCE(SUM(total), 0), MIN(fecha),
-               GROUP_CONCAT(DISTINCT mesero)
+        SELECT mesa, COUNT(*), MIN(fecha), GROUP_CONCAT(DISTINCT mesero)
         FROM pedidos_movil
         WHERE estado IN ('Pendiente', 'En caja')
         GROUP BY mesa
     """)
-    ocupadas = {
-        fila[0]: {
-            "pedidos": fila[1], "total": fila[2],
-            "desde": fila[3], "meseros": fila[4] or "",
+    ocupadas = {}
+    for mesa, pedidos, desde, meseros in cur.fetchall():
+        comensales = obtener_comensales_mesa(mesa)
+        total_pendiente = round(sum(
+            cuenta["total"] for cuenta in comensales if not cuenta["pagada"]
+        ), 2)
+        ocupadas[mesa] = {
+            "pedidos": pedidos, "total": total_pendiente,
+            "desde": desde, "meseros": meseros or "",
+            "comensales": comensales,
         }
-        for fila in cur.fetchall()
-    }
     conn.close()
     # Los pedidos para llevar usan una referencia propia (cliente y folio).
     # Se agregan a la lista mientras estén activos para que puedan cargarse y
@@ -2194,7 +2399,7 @@ def obtener_resumen_mesas():
             "ocupada": mesa in ocupadas,
             **ocupadas.get(mesa, {
                 "pedidos": 0, "total": 0.0,
-                "desde": None, "meseros": "",
+                "desde": None, "meseros": "", "comensales": [],
             }),
         }
         for mesa in mesas
