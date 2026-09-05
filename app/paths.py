@@ -5,13 +5,19 @@ from pathlib import Path
 
 
 def application_folder():
-    """Carpeta persistente, independiente del directorio de inicio."""
+    """Carpeta persistente compartida por desarrollo y ejecutable."""
     override = os.environ.get("LA_ESQUINA_HOME")
     if override:
         return Path(override).expanduser().resolve()
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent
-    return Path(__file__).resolve().parent.parent
+
+    # Usar una ubicacion estable evita que cada EXE compilado termine
+    # leyendo una base distinta dentro de dist. Tanto VS Code como el
+    # ejecutable comparten los mismos datos del negocio.
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        return (Path(local_app_data) / "LaEsquinaManager").resolve()
+
+    return (Path.home() / ".la_esquina_manager").resolve()
 
 
 def resource_folder():
