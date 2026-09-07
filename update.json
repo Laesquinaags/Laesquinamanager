@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "url": "",
-  "sha256": "",
-  "notas": "Versión estable inicial de La Esquina Manager."
+  "version": "1.0.1",
+  "url": "https://github.com/Laesquinaags/Laesquinamanager/releases/download/v1.0.1/LaEsquinaManager-Setup-1.0.1.exe",
+  "sha256": "06fc3a225631b3117390cbd43d2d92d22ea32ecb8e99a5345b88d3972a52893a",
+  "notas": "Mejoras y correcciones de la version 1.0.1."
 }
